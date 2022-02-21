@@ -22,49 +22,63 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Locale;
 import java.util.TimeZone;
+import java.util.concurrent.Semaphore;
 
 @RequiresApi(api = Build.VERSION_CODES.O)
-public class ClientThread {
-    Socket socket;
+public class ClientThread extends Thread {
+    private Socket socket;
+    private Semaphore semaphore;
 
-    ClientThread(Socket s) {
+    ClientThread(Socket s, Semaphore semaphore) {
         this.socket = s;
+        this.semaphore = semaphore;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
-    void start() throws IOException {
-        Log.d("SERVER", "Socket Accepted");
-
-        OutputStream o = this.socket.getOutputStream();
-        BufferedWriter out = new BufferedWriter(new OutputStreamWriter(o));
-        BufferedReader in = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
-
-        String location = this.getLocation(in);
-        String pathToSD = Environment.getExternalStorageDirectory().getAbsolutePath();
-
-        String filePath = pathToSD + location;
-
-        
+    public void run() {
         try {
-            String type = MimeTypeMap.getFileExtensionFromUrl(location);
+            Log.d("SERVER", "Socket Accepted");
+            Log.d("CLIENT", "Starting thread");
 
-            type = type.equals("html") ? ("text/html") : ("image/" + type);
+            OutputStream o = this.socket.getOutputStream();
+            BufferedWriter out = new BufferedWriter(new OutputStreamWriter(o));
+            BufferedReader in = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
 
-            byte[] dataByte = Files.readAllBytes(Paths.get(filePath));
-            StringBuilder header = this.getOkHeader(type, dataByte);
-            out.write(header + "\n");
+            String location = this.getLocation(in);
+            String pathToSD = Environment.getExternalStorageDirectory().getAbsolutePath();
+
+            String filePath = pathToSD + location;
+
+            try {
+                String type = MimeTypeMap.getFileExtensionFromUrl(location);
+
+                type = type.equals("html") ? ("text/html") : ("image/" + type);
+
+                byte[] dataByte = Files.readAllBytes(Paths.get(filePath));
+                StringBuilder header = this.getOkHeader(type, dataByte);
+                out.write(header + "\n");
+                out.flush();
+                o.write(dataByte);
+                o.flush();
+            } catch (NoSuchFileException|FileNotFoundException e) {
+                e.printStackTrace();
+                String content = "<html><h1>Soubor nenalezen</h1></html>";
+                StringBuilder header = this.getErrorHeader(content);
+                out.write(header.toString() + "\n");
+                out.write(content);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
             out.flush();
-            o.write(dataByte);
-            o.flush();
-        } catch (FileNotFoundException | NoSuchFileException e) {
-            e.printStackTrace();
-            String content = "<html><h1>Soubor nenalezen</h1></html>";
-            StringBuilder header = this.getErrorHeader(content);
-            out.write(header.toString() + "\n");
-            out.write(content);
-        }
 
-        out.flush();
+            this.socket.close();
+            Log.d("SERVER", "Socket Closed");
+        } catch(IOException e) {
+            e.printStackTrace();
+        } finally {
+            this.semaphore.release();
+        }
     }
 
     /**
