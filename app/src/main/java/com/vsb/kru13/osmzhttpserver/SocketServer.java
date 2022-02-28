@@ -1,6 +1,9 @@
 package com.vsb.kru13.osmzhttpserver;
 
 import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 import androidx.annotation.RequiresApi;
 
@@ -24,6 +27,11 @@ public class SocketServer extends Thread {
     boolean bRunning;
     private static final int MAX_AVAILABLE = 3;
     private final Semaphore semaphore = new Semaphore(MAX_AVAILABLE, true);
+    private Handler handler;
+
+    public SocketServer(Handler handler) {
+        this.handler = handler;
+    }
 
     public void close() {
         try {
@@ -48,6 +56,14 @@ public class SocketServer extends Thread {
 
                 if(this.semaphore.tryAcquire(1)) {
                     Log.d("FREE PERMITS", String.valueOf(this.semaphore.availablePermits()));
+
+                    Bundle bundle = new Bundle();
+                    bundle.putInt("usersCount", MAX_AVAILABLE - this.semaphore.availablePermits());
+                    bundle.putInt("availablePermits", this.semaphore.availablePermits());
+                    Message message = handler.obtainMessage();
+                    message.setData(bundle);
+                    message.sendToTarget();
+
                     new ClientThread(s, this.semaphore).start();
                 } else {
                     OutputStream o = s.getOutputStream();

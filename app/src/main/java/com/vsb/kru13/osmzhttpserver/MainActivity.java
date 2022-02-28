@@ -1,17 +1,26 @@
 package com.vsb.kru13.osmzhttpserver;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
+
+import org.w3c.dom.Text;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -21,6 +30,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private SocketServer s;
     private static final int READ_EXTERNAL_STORAGE = 1;
+
+    Handler handler = new Handler() {
+        @SuppressLint("HandlerLeak")
+        @Override
+        public void handleMessage(@NonNull Message message) {
+            TextView textView = (TextView)findViewById(R.id.textView);
+
+            textView.setText(
+                    "Users count is " + message.getData().getInt("usersCount")
+                    + ", available connections: " + message.getData().getInt("availablePermits")
+            );
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,6 +56,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         btn2.setOnClickListener(this);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void onClick(View v) {
 
@@ -45,7 +68,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 ActivityCompat.requestPermissions(
                         this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, READ_EXTERNAL_STORAGE);
             } else {
-                s = new SocketServer();
+                s = new SocketServer(this.handler);
                 s.start();
             }
         }
@@ -59,13 +82,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         switch (requestCode) {
 
             case READ_EXTERNAL_STORAGE:
                 if ((grantResults.length > 0) && (grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
-                    s = new SocketServer();
+                    s = new SocketServer(this.handler);
                     s.start();
                 }
                 break;
