@@ -1,6 +1,6 @@
 package com.vsb.kru13.osmzhttpserver;
 
-import android.content.Context;
+import android.app.Activity;
 import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
@@ -31,10 +31,10 @@ public class ClientThread extends Thread {
     private Semaphore semaphore;
     private TelemetryHolder telemetryHolder;
 
-    ClientThread(Socket s, Semaphore semaphore, Context context) {
+    ClientThread(Socket s, Semaphore semaphore, Activity activity) {
         this.socket = s;
         this.semaphore = semaphore;
-        this.telemetryHolder = new TelemetryHolder(context);
+        this.telemetryHolder = new TelemetryHolder(activity);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)

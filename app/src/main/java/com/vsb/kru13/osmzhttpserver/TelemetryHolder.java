@@ -1,11 +1,24 @@
 package com.vsb.kru13.osmzhttpserver;
 
+import android.Manifest;
+import android.app.Activity;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Location;
+import android.os.Looper;
 import android.util.Log;
+
+import androidx.core.app.ActivityCompat;
+
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -23,9 +36,14 @@ public class TelemetryHolder implements SensorEventListener {
     private Sensor gyroscope;
     private Sensor acceleration;
     private Context context;
+    private Activity activity;
 
-    TelemetryHolder(Context context) {
-        this.context = context;
+    private LocationRequest locationRequest;
+    private FusedLocationProviderClient fusedLocationClient;
+
+    TelemetryHolder(Activity activity) {
+        this.activity = activity;
+        this.context = activity.getApplicationContext();
         this.sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
 
         this.gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
@@ -33,6 +51,14 @@ public class TelemetryHolder implements SensorEventListener {
 
         this.acceleration = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         this.sensorManager.registerListener(this, this.acceleration, SensorManager.SENSOR_DELAY_NORMAL);
+
+        // Location
+        locationRequest = new LocationRequest();
+        locationRequest.setInterval(30000);
+        locationRequest.setFastestInterval(5000);
+        locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+
+        updateGPS();
     }
 
     @Override
@@ -60,7 +86,7 @@ public class TelemetryHolder implements SensorEventListener {
 
     }
 
-    public JSONArray getAccelerationData(SensorEvent sensorEvent) throws JSONException {
+    private JSONArray getAccelerationData(SensorEvent sensorEvent) throws JSONException {
         double alpha = 0.8;
         double[] gravity = new double[3];
 
@@ -80,7 +106,7 @@ public class TelemetryHolder implements SensorEventListener {
         return array;
     }
 
-    public JSONArray getGyroData(SensorEvent sensorEvent) throws JSONException {
+    private JSONArray getGyroData(SensorEvent sensorEvent) throws JSONException {
         // Axis of the rotation sample
         JSONArray array = new JSONArray();
         array.put(sensorEvent.values[0]);
@@ -94,7 +120,7 @@ public class TelemetryHolder implements SensorEventListener {
         return array;
     }
 
-    public void writeData(JSONArray array, String name) throws JSONException, IOException {
+    private void writeData(JSONArray array, String name) throws JSONException, IOException {
         JSONObject jsonObject = this.readFileAndReturnJSON();
 
         Log.d("JSON-name", name);
@@ -112,7 +138,7 @@ public class TelemetryHolder implements SensorEventListener {
         bufferedWriter.close();
     }
 
-    public JSONObject readFileAndReturnJSON() throws IOException {
+    private JSONObject readFileAndReturnJSON() throws IOException {
         File file = new File(context.getFilesDir(),"sensorData");
         FileReader fileReader = new FileReader(file);
         BufferedReader bufferedReader = new BufferedReader(fileReader);
@@ -135,5 +161,34 @@ public class TelemetryHolder implements SensorEventListener {
         }
 
         return jsonObject;
+    }
+
+    private void updateGPS() {
+        this.fusedLocationClient = LocationServices.getFusedLocationProviderClient(this.context);
+
+        if (ActivityCompat.checkSelfPermission(this.context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            this.fusedLocationClient.getLastLocation().addOnSuccessListener(this.activity, location -> {
+                if (location != null) {
+                    Log.d("LAT", String.valueOf(location.getLatitude()));
+                    Log.d("LONG", String.valueOf(location.getLongitude()));
+                    Log.d("ALT", String.valueOf(location.getAltitude()));
+
+                    JSONArray array = new JSONArray();
+                    array.put("lat:"+location.getLatitude());
+                    array.put("long:"+location.getLongitude());
+                    array.put("alt:"+location.getAltitude());
+
+                    try {
+                        this.writeData(array, "location");
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                } else {
+                    Log.d("LOC-NOT", "TEST");
+                }
+            });
+        }
     }
 }
