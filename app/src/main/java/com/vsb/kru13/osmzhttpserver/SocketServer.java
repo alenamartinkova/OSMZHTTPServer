@@ -1,5 +1,6 @@
 package com.vsb.kru13.osmzhttpserver;
 
+import android.content.Context;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -28,9 +29,11 @@ public class SocketServer extends Thread {
     private static final int MAX_AVAILABLE = 3;
     private final Semaphore semaphore = new Semaphore(MAX_AVAILABLE, true);
     private Handler handler;
+    private Context context;
 
-    public SocketServer(Handler handler) {
+    public SocketServer(Handler handler, Context context) {
         this.handler = handler;
+        this.context = context;
     }
 
     public void close() {
@@ -64,7 +67,7 @@ public class SocketServer extends Thread {
                     message.setData(bundle);
                     message.sendToTarget();
 
-                    new ClientThread(s, this.semaphore).start();
+                    new ClientThread(s, this.semaphore, this.context).start();
                 } else {
                     OutputStream o = s.getOutputStream();
                     BufferedWriter out = new BufferedWriter(new OutputStreamWriter(o));

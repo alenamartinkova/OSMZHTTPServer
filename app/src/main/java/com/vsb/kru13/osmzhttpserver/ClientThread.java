@@ -1,5 +1,6 @@
 package com.vsb.kru13.osmzhttpserver;
 
+import android.content.Context;
 import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
@@ -28,10 +29,12 @@ import java.util.concurrent.Semaphore;
 public class ClientThread extends Thread {
     private Socket socket;
     private Semaphore semaphore;
+    private TelemetryHolder telemetryHolder;
 
-    ClientThread(Socket s, Semaphore semaphore) {
+    ClientThread(Socket s, Semaphore semaphore, Context context) {
         this.socket = s;
         this.semaphore = semaphore;
+        this.telemetryHolder = new TelemetryHolder(context);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
@@ -45,29 +48,36 @@ public class ClientThread extends Thread {
             BufferedReader in = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
 
             String location = this.getLocation(in);
-            String pathToSD = Environment.getExternalStorageDirectory().getAbsolutePath();
 
-            String filePath = pathToSD + location;
+            if (location.equals("/streams/telemetry")) {
+                String type = "application/json";
+                //StringBuilder header = this.getOkHeader(type, dataByte);
 
-            try {
-                String type = MimeTypeMap.getFileExtensionFromUrl(location);
+            } else {
+                String pathToSD = Environment.getExternalStorageDirectory().getAbsolutePath();
 
-                type = type.equals("html") ? ("text/html") : ("image/" + type);
+                String filePath = pathToSD + location;
 
-                byte[] dataByte = Files.readAllBytes(Paths.get(filePath));
-                StringBuilder header = this.getOkHeader(type, dataByte);
-                out.write(header + "\n");
-                out.flush();
-                o.write(dataByte);
-                o.flush();
-            } catch (NoSuchFileException|FileNotFoundException e) {
-                e.printStackTrace();
-                String content = "<html><h1>Soubor nenalezen</h1></html>";
-                StringBuilder header = this.getErrorHeader(content);
-                out.write(header.toString() + "\n");
-                out.write(content);
-            } catch (IOException e) {
-                e.printStackTrace();
+                try {
+                    String type = MimeTypeMap.getFileExtensionFromUrl(location);
+
+                    type = type.equals("html") ? ("text/html") : ("image/" + type);
+
+                    byte[] dataByte = Files.readAllBytes(Paths.get(filePath));
+                    StringBuilder header = this.getOkHeader(type, dataByte);
+                    out.write(header + "\n");
+                    out.flush();
+                    o.write(dataByte);
+                    o.flush();
+                } catch (NoSuchFileException|FileNotFoundException e) {
+                    e.printStackTrace();
+                    String content = "<html><h1>Soubor nenalezen</h1></html>";
+                    StringBuilder header = this.getErrorHeader(content);
+                    out.write(header.toString() + "\n");
+                    out.write(content);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
 
             out.flush();
