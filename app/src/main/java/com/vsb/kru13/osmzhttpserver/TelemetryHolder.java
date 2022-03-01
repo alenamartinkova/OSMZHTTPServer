@@ -141,10 +141,10 @@ public class TelemetryHolder implements SensorEventListener {
         JSONObject jsonObject = this.readFileAndReturnJSON();
 
         Log.d("JSON-name", name);
-        Log.d("JSON-bef", jsonObject.toString());
+        //Log.d("JSON-bef", jsonObject.toString());
         jsonObject.put(name, array);
 
-        Log.d("JSON-af", jsonObject.toString());
+        //Log.d("JSON-af", jsonObject.toString());
         // Convert JsonObject to String Format
         String userString = jsonObject.toString();
         // Define the File Path and its Name
@@ -163,24 +163,26 @@ public class TelemetryHolder implements SensorEventListener {
      */
     private JSONObject readFileAndReturnJSON() throws IOException {
         File file = new File(context.getFilesDir(),"sensorData");
-        FileReader fileReader = new FileReader(file);
-        BufferedReader bufferedReader = new BufferedReader(fileReader);
-        StringBuilder stringBuilder = new StringBuilder();
-        String line = bufferedReader.readLine();
+        JSONObject jsonObject = new JSONObject();
 
-        while (line != null){
-            stringBuilder.append(line).append("\n");
-            line = bufferedReader.readLine();
-        }
-        bufferedReader.close();
-        String response = stringBuilder.toString();
+        if (file.exists()) {
+            FileReader fileReader = new FileReader(file);
+            BufferedReader bufferedReader = new BufferedReader(fileReader);
+            StringBuilder stringBuilder = new StringBuilder();
+            String line = bufferedReader.readLine();
 
-        JSONObject jsonObject = null;
+            while (line != null){
+                stringBuilder.append(line).append("\n");
+                line = bufferedReader.readLine();
+            }
+            bufferedReader.close();
+            String response = stringBuilder.toString();
 
-        try {
-            jsonObject = new JSONObject(response);
-        } catch (JSONException err){
-            Log.d("Error", err.toString());
+            try {
+                jsonObject = new JSONObject(response);
+            } catch (JSONException err){
+                Log.d("Error", err.toString());
+            }
         }
 
         return jsonObject;
@@ -193,6 +195,7 @@ public class TelemetryHolder implements SensorEventListener {
         this.fusedLocationClient = LocationServices.getFusedLocationProviderClient(this.context);
 
         if (ActivityCompat.checkSelfPermission(this.context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+
             this.fusedLocationClient.getLastLocation().addOnSuccessListener(this.activity, location -> {
                 if (location != null) {
                     Log.d("LAT", String.valueOf(location.getLatitude()));
@@ -215,6 +218,8 @@ public class TelemetryHolder implements SensorEventListener {
                     Log.d("LOC-NOT", "TEST");
                 }
             });
+        } else {
+            Log.d("PERM", "not");
         }
     }
 }

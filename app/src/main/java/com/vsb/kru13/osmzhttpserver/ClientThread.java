@@ -10,6 +10,7 @@ import androidx.annotation.RequiresApi;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -30,11 +31,12 @@ public class ClientThread extends Thread {
     private Socket socket;
     private Semaphore semaphore;
     private TelemetryHolder telemetryHolder;
+    private Activity activity;
 
     ClientThread(Socket s, Semaphore semaphore, Activity activity) {
         this.socket = s;
         this.semaphore = semaphore;
-        this.telemetryHolder = new TelemetryHolder(activity);
+        this.activity = activity;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
@@ -50,9 +52,16 @@ public class ClientThread extends Thread {
             String location = this.getLocation(in);
 
             if (location.equals("/streams/telemetry")) {
+                this.telemetryHolder = new TelemetryHolder(this.activity);
                 String type = "application/json";
-                //StringBuilder header = this.getOkHeader(type, dataByte);
 
+                File file = new File(this.activity.getApplicationContext().getFilesDir(), "sensorData");
+                byte[] dataByte = Files.readAllBytes(Paths.get(file.getPath()));
+                StringBuilder header = this.getOkHeader(type, dataByte);
+                out.write(header + "\n");
+                out.flush();
+                o.write(dataByte);
+                o.flush();
             } else {
                 String pathToSD = Environment.getExternalStorageDirectory().getAbsolutePath();
 
