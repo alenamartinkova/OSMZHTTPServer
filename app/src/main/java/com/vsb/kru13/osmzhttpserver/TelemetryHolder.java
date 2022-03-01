@@ -8,16 +8,12 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.location.Location;
-import android.os.Looper;
 import android.util.Log;
 
 import androidx.core.app.ActivityCompat;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 
 import org.json.JSONArray;
@@ -86,6 +82,12 @@ public class TelemetryHolder implements SensorEventListener {
 
     }
 
+    /**
+     * Function that get acceleration data
+     * @param sensorEvent
+     * @return
+     * @throws JSONException
+     */
     private JSONArray getAccelerationData(SensorEvent sensorEvent) throws JSONException {
         double alpha = 0.8;
         double[] gravity = new double[3];
@@ -106,6 +108,13 @@ public class TelemetryHolder implements SensorEventListener {
         return array;
     }
 
+    /**
+     * Function that gets gyro data
+     *
+     * @param sensorEvent
+     * @return
+     * @throws JSONException
+     */
     private JSONArray getGyroData(SensorEvent sensorEvent) throws JSONException {
         // Axis of the rotation sample
         JSONArray array = new JSONArray();
@@ -120,6 +129,14 @@ public class TelemetryHolder implements SensorEventListener {
         return array;
     }
 
+    /**
+     * Function that writes data to JSON file
+     *
+     * @param array
+     * @param name
+     * @throws JSONException
+     * @throws IOException
+     */
     private void writeData(JSONArray array, String name) throws JSONException, IOException {
         JSONObject jsonObject = this.readFileAndReturnJSON();
 
@@ -138,6 +155,12 @@ public class TelemetryHolder implements SensorEventListener {
         bufferedWriter.close();
     }
 
+    /**
+     * Function that reads and returns JSON file
+     *
+     * @return
+     * @throws IOException
+     */
     private JSONObject readFileAndReturnJSON() throws IOException {
         File file = new File(context.getFilesDir(),"sensorData");
         FileReader fileReader = new FileReader(file);
@@ -163,6 +186,9 @@ public class TelemetryHolder implements SensorEventListener {
         return jsonObject;
     }
 
+    /**
+     * Function that updates GPS information
+     */
     private void updateGPS() {
         this.fusedLocationClient = LocationServices.getFusedLocationProviderClient(this.context);
 
