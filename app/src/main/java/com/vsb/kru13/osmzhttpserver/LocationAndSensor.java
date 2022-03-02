@@ -34,12 +34,12 @@ public abstract class LocationAndSensor {
 
         //Log.d("JSON-af", jsonObject.toString());
         // Convert JsonObject to String Format
-        String userString = jsonObject.toString();
+        String jsonString = jsonObject.toString();
         // Define the File Path and its Name
         File file = new File(context.getFilesDir(), "sensorData");
         FileWriter fileWriter = new FileWriter(file);
         BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
-        bufferedWriter.write(userString);
+        bufferedWriter.write(jsonString);
         bufferedWriter.close();
     }
 
