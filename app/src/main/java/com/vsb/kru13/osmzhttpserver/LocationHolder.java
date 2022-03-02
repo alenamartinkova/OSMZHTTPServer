@@ -4,12 +4,16 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.location.Location;
+import android.os.Looper;
 import android.util.Log;
 
 import androidx.core.app.ActivityCompat;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 
 import org.json.JSONArray;
@@ -22,16 +26,26 @@ public class LocationHolder extends LocationAndSensor {
     private FusedLocationProviderClient fusedLocationClient;
     private Context context;
     private Activity activity;
+    private LocationCallback locationCallback;
 
     LocationHolder(Activity activity) {
         this.activity = activity;
         this.context = activity.getApplicationContext();
         this.locationRequest = new LocationRequest();
-        this.locationRequest.setInterval(30000);
+        this.locationRequest.setInterval(10000);
         this.locationRequest.setFastestInterval(5000);
         this.locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
 
+        this.locationCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                super.onLocationResult(locationResult);
+                updateGPS(locationResult.getLastLocation());
+            }
+        };
+
         updateGPS();
+        startLocationUpdates();
     }
 
     /**
@@ -49,9 +63,9 @@ public class LocationHolder extends LocationAndSensor {
                     Log.d("ALT", String.valueOf(location.getAltitude()));
 
                     JSONArray array = new JSONArray();
-                    array.put("lat:"+location.getLatitude());
-                    array.put("long:"+location.getLongitude());
-                    array.put("alt:"+location.getAltitude());
+                    array.put("lat:" + location.getLatitude());
+                    array.put("long:" + location.getLongitude());
+                    array.put("alt:" + location.getAltitude());
 
                     try {
                         this.writeData(array, "location", this.context);
@@ -61,11 +75,45 @@ public class LocationHolder extends LocationAndSensor {
                         e.printStackTrace();
                     }
                 } else {
-                    Log.d("LOC-NOT", "TEST");
+                    Log.d("LOC-NOT", "LOC NOT");
                 }
             });
         } else {
             Log.d("PERM", "not");
+        }
+    }
+
+    private void startLocationUpdates() {
+        if (ActivityCompat.checkSelfPermission(this.context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            Looper.prepare();
+            this.fusedLocationClient.requestLocationUpdates(
+                    this.locationRequest,
+                    this.locationCallback,
+                    null
+            );
+            updateGPS();
+        }
+    }
+
+    /**
+     * Function that updates GPS information
+     */
+    private void updateGPS(Location location) {
+        Log.d("LAT-SECOND", String.valueOf(location.getLatitude()));
+        Log.d("LONG-SECOND", String.valueOf(location.getLongitude()));
+        Log.d("ALT-SECOND", String.valueOf(location.getAltitude()));
+
+        JSONArray array = new JSONArray();
+        array.put("lat:" + location.getLatitude());
+        array.put("long:" + location.getLongitude());
+        array.put("alt:" + location.getAltitude());
+
+        try {
+            this.writeData(array, "location", this.context);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }

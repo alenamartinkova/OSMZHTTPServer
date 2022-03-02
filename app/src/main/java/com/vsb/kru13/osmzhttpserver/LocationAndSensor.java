@@ -28,7 +28,7 @@ public abstract class LocationAndSensor {
     void writeData(JSONArray array, String name, Context context) throws JSONException, IOException {
         JSONObject jsonObject = this.readFileAndReturnJSON(context);
 
-        Log.d("JSON-name", name);
+        //Log.d("JSON-name", name);
         //Log.d("JSON-bef", jsonObject.toString());
         jsonObject.put(name, array);
 
