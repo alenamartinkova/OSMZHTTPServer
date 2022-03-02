@@ -30,7 +30,6 @@ import java.util.concurrent.Semaphore;
 public class ClientThread extends Thread {
     private Socket socket;
     private Semaphore semaphore;
-    private TelemetryHolder telemetryHolder;
     private Activity activity;
 
     ClientThread(Socket s, Semaphore semaphore, Activity activity) {
@@ -52,7 +51,8 @@ public class ClientThread extends Thread {
             String location = this.getLocation(in);
 
             if (location.equals("/streams/telemetry")) {
-                this.telemetryHolder = new TelemetryHolder(this.activity);
+                new TelemetryHolder(this.activity);
+                new LocationHolder(this.activity);
                 String type = "application/json";
 
                 File file = new File(this.activity.getApplicationContext().getFilesDir(), "sensorData");
