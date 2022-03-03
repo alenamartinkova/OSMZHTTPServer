@@ -37,11 +37,17 @@ public class LocationHolder extends LocationAndSensor {
         this.locationRequest.setFastestInterval(5000);
         this.locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
 
+        this.fusedLocationClient = LocationServices.getFusedLocationProviderClient(this.context);
+
         this.locationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult locationResult) {
                 super.onLocationResult(locationResult);
-                updateGPS(locationResult.getLastLocation());
+                try {
+                    updateGPS(locationResult.getLastLocation());
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
             }
         };
 
@@ -53,8 +59,6 @@ public class LocationHolder extends LocationAndSensor {
      * Function that updates GPS information
      */
     private void updateGPS() {
-        this.fusedLocationClient = LocationServices.getFusedLocationProviderClient(this.context);
-
         if (ActivityCompat.checkSelfPermission(this.context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
 
             this.fusedLocationClient.getLastLocation().addOnSuccessListener(this.activity, location -> {
@@ -98,15 +102,15 @@ public class LocationHolder extends LocationAndSensor {
     /**
      * Function that updates GPS information
      */
-    private void updateGPS(Location location) {
+    private void updateGPS(Location location) throws JSONException {
         Log.d("LAT-SECOND", String.valueOf(location.getLatitude()));
         Log.d("LONG-SECOND", String.valueOf(location.getLongitude()));
         Log.d("ALT-SECOND", String.valueOf(location.getAltitude()));
 
         JSONArray array = new JSONArray();
-        array.put("lat:" + location.getLatitude());
-        array.put("long:" + location.getLongitude());
-        array.put("alt:" + location.getAltitude());
+        array.put(location.getLatitude());
+        array.put(location.getLongitude());
+        array.put(location.getAltitude());
 
         try {
             this.writeData(array, "location", this.context);

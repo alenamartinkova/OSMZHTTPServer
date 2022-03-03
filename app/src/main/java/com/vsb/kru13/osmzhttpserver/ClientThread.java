@@ -49,22 +49,32 @@ public class ClientThread extends Thread {
             BufferedReader in = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
 
             String location = this.getLocation(in);
+            String pathToSD = Environment.getExternalStorageDirectory().getAbsolutePath();
 
             if (location.equals("/streams/telemetry")) {
-                new TelemetryHolder(this.activity);
-                new LocationHolder(this.activity);
-                String type = "application/json";
+                try {
+                    String filePath = pathToSD + "/telemetry.html";
+                    new TelemetryHolder(this.activity);
+                    new LocationHolder(this.activity);
 
-                File file = new File(this.activity.getApplicationContext().getFilesDir(), "sensorData");
+                    byte[] dataByte = Files.readAllBytes(Paths.get(filePath));
+                    StringBuilder header = this.getOkHeader("text/html", dataByte);
+                    out.write(header + "\n");
+                    out.flush();
+                    o.write(dataByte);
+                    o.flush();
+                } catch (NoSuchFileException|FileNotFoundException e) {
+                    this.generateNoSuchFile(e, out);
+                }
+            } else if (location.equals("/streams/telemetry/data")) {
+                File file = new File(this.activity.getApplicationContext().getFilesDir(),"sensorData");;
                 byte[] dataByte = Files.readAllBytes(Paths.get(file.getPath()));
-                StringBuilder header = this.getOkHeader(type, dataByte);
+                StringBuilder header = this.getOkHeader("application/json", dataByte);
                 out.write(header + "\n");
                 out.flush();
                 o.write(dataByte);
                 o.flush();
             } else {
-                String pathToSD = Environment.getExternalStorageDirectory().getAbsolutePath();
-
                 String filePath = pathToSD + location;
 
                 try {
@@ -79,11 +89,7 @@ public class ClientThread extends Thread {
                     o.write(dataByte);
                     o.flush();
                 } catch (NoSuchFileException|FileNotFoundException e) {
-                    e.printStackTrace();
-                    String content = "<html><h1>Soubor nenalezen</h1></html>";
-                    StringBuilder header = this.getErrorHeader(content);
-                    out.write(header.toString() + "\n");
-                    out.write(content);
+                   this.generateNoSuchFile(e, out);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -167,5 +173,19 @@ public class ClientThread extends Thread {
                 "EEE, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH);
         dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
         return dateFormat.format(calendar.getTime());
+    }
+
+    /**
+     *
+     * @param e
+     * @param out
+     * @throws IOException
+     */
+    private void generateNoSuchFile(Exception e, BufferedWriter out) throws IOException {
+        e.printStackTrace();
+        String content = "<html><h1>Soubor nenalezen</h1></html>";
+        StringBuilder header = this.getErrorHeader(content);
+        out.write(header.toString() + "\n");
+        out.write(content);
     }
 }

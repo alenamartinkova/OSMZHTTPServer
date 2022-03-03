@@ -27,7 +27,7 @@ public class SocketServer extends Thread {
     ServerSocket serverSocket;
     public final int port = 12345;
     boolean bRunning;
-    private static final int MAX_AVAILABLE = 3;
+    private static final int MAX_AVAILABLE = 100;
     private final Semaphore semaphore = new Semaphore(MAX_AVAILABLE, true);
     private Handler handler;
     private Activity activity;
