@@ -29,6 +29,7 @@ public class LocationHolder extends LocationAndSensor {
     private LocationCallback locationCallback;
 
     LocationHolder(Activity activity) {
+        Looper.prepare();
         this.activity = activity;
         this.context = activity.getApplicationContext();
         this.locationRequest = new LocationRequest();
@@ -44,8 +45,8 @@ public class LocationHolder extends LocationAndSensor {
             }
         };
 
-        updateGPS();
         startLocationUpdates();
+        updateGPS();
     }
 
     /**
@@ -85,7 +86,6 @@ public class LocationHolder extends LocationAndSensor {
 
     private void startLocationUpdates() {
         if (ActivityCompat.checkSelfPermission(this.context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            Looper.prepare();
             this.fusedLocationClient.requestLocationUpdates(
                     this.locationRequest,
                     this.locationCallback,
