@@ -1,7 +1,6 @@
 package com.vsb.kru13.osmzhttpserver;
 
 import android.app.Activity;
-import android.content.Context;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;

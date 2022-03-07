@@ -23,6 +23,7 @@ import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.TimeZone;
 import java.util.concurrent.Semaphore;
 
@@ -31,6 +32,7 @@ public class ClientThread extends Thread {
     private Socket socket;
     private Semaphore semaphore;
     private Activity activity;
+    private LocationHolder locationHolder;
 
     ClientThread(Socket s, Semaphore semaphore, Activity activity) {
         this.socket = s;
