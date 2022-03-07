@@ -1,13 +1,10 @@
 package com.vsb.kru13.osmzhttpserver;
-
 import android.app.Activity;
 import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
-
 import androidx.annotation.RequiresApi;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -26,64 +23,53 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.TimeZone;
 import java.util.concurrent.Semaphore;
-
 @RequiresApi(api = Build.VERSION_CODES.O)
 public class ClientThread extends Thread {
     private Socket socket;
     private Semaphore semaphore;
     private Activity activity;
     private LocationHolder locationHolder;
-
     ClientThread(Socket s, Semaphore semaphore, Activity activity) {
         this.socket = s;
         this.semaphore = semaphore;
         this.activity = activity;
     }
-
     @RequiresApi(api = Build.VERSION_CODES.O)
     public void run() {
         try {
             Log.d("SERVER", "Socket Accepted");
             Log.d("CLIENT", "Starting thread");
-
             OutputStream o = this.socket.getOutputStream();
             BufferedWriter out = new BufferedWriter(new OutputStreamWriter(o));
             BufferedReader in = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
-
             String location = this.getLocation(in);
             String pathToSD = Environment.getExternalStorageDirectory().getAbsolutePath();
 
-            if (location.equals("/streams/telemetry")) {
-                try {
-                    String filePath = pathToSD + "/telemetry.html";
-                    new TelemetryHolder(this.activity);
-                    new LocationHolder(this.activity);
+           if (location.equals("/streams/telemetry/data")) {
+                File file = new File(this.activity.getApplicationContext().getFilesDir(),"sensorData");
 
-                    byte[] dataByte = Files.readAllBytes(Paths.get(filePath));
-                    StringBuilder header = this.getOkHeader("text/html", dataByte);
-                    out.write(header + "\n");
-                    out.flush();
-                    o.write(dataByte);
-                    o.flush();
-                } catch (NoSuchFileException|FileNotFoundException e) {
-                    this.generateNoSuchFile(e, out);
+                if (Objects.isNull(this.locationHolder)) {
+                    this.locationHolder = new LocationHolder(this.activity);
                 }
-            } else if (location.equals("/streams/telemetry/data")) {
-                File file = new File(this.activity.getApplicationContext().getFilesDir(),"sensorData");;
+                this.locationHolder.updateGPS();
                 byte[] dataByte = Files.readAllBytes(Paths.get(file.getPath()));
                 StringBuilder header = this.getOkHeader("application/json", dataByte);
                 out.write(header + "\n");
                 out.flush();
                 o.write(dataByte);
                 o.flush();
-            } else {
-                String filePath = pathToSD + location;
+           } else {
+               if (location.equals("/streams/telemetry")) {
+                   location = "/telemetry.html";
+                   new TelemetryHolder(this.activity);
+                   this.locationHolder = new LocationHolder(this.activity);
+               }
+
+               String filePath = pathToSD + location;
 
                 try {
                     String type = MimeTypeMap.getFileExtensionFromUrl(location);
-
                     type = type.equals("html") ? ("text/html") : ("image/" + type);
-
                     byte[] dataByte = Files.readAllBytes(Paths.get(filePath));
                     StringBuilder header = this.getOkHeader(type, dataByte);
                     out.write(header + "\n");
@@ -91,14 +77,12 @@ public class ClientThread extends Thread {
                     o.write(dataByte);
                     o.flush();
                 } catch (NoSuchFileException|FileNotFoundException e) {
-                   this.generateNoSuchFile(e, out);
+                    this.generateNoSuchFile(e, out);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
-
             out.flush();
-
             this.socket.close();
             Log.d("SERVER", "Socket Closed");
         } catch(IOException e) {
@@ -107,7 +91,6 @@ public class ClientThread extends Thread {
             this.semaphore.release();
         }
     }
-
     /**
      * Returns header when file is found
      * @param type
@@ -116,15 +99,12 @@ public class ClientThread extends Thread {
      */
     StringBuilder getOkHeader(String type, byte[] data) {
         StringBuilder sb = new StringBuilder();
-
         sb.append("HTTP/1.0 200 OK\n");
         sb.append("Date:" + this.getServerTime()+"\n");
         sb.append("Content-Type: "+type+"\n"); // MIME typ souboru
         sb.append("Content-Length: "+data.length+"\n"); // delka souboru
-
         return sb;
     }
-
     /**
      * Returns error header
      *
@@ -134,15 +114,12 @@ public class ClientThread extends Thread {
      */
     StringBuilder getErrorHeader(String content) {
         StringBuilder sb = new StringBuilder();
-
         sb.append("HTTP/1.0 404 NOT FOUND\n");
         sb.append("Date: " + this.getServerTime() +"\n");
         sb.append("Content-Type: text/html\n");
         sb.append("Content-Length: " + content.length() +"\n");
-
         return sb;
     }
-
     /**
      * Function that returns location of file
      *
@@ -157,13 +134,10 @@ public class ClientThread extends Thread {
                 String[] split = line.split("\\s+");
                 location = split[1];
             }
-
             Log.d("SERVER-REQUEST", line);
         }
-
         return location.equals("/") ? "/index.html" : location;
     }
-
     /**
      * Function that returns server time
      *
@@ -176,7 +150,6 @@ public class ClientThread extends Thread {
         dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
         return dateFormat.format(calendar.getTime());
     }
-
     /**
      *
      * @param e
