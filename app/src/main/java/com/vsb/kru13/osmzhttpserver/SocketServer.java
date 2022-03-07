@@ -30,10 +30,12 @@ public class SocketServer extends Thread {
     private final Semaphore semaphore = new Semaphore(MAX_AVAILABLE, true);
     private Handler handler;
     private Activity activity;
+    private TelemetryHolder telemetryHolder;
 
     public SocketServer(Handler handler, Activity activity) {
         this.handler = handler;
         this.activity = activity;
+        this.telemetryHolder = new TelemetryHolder(this.activity);
     }
 
     public void close() {
@@ -67,7 +69,7 @@ public class SocketServer extends Thread {
                     message.setData(bundle);
                     message.sendToTarget();
 
-                    new ClientThread(s, this.semaphore, this.activity).start();
+                    new ClientThread(s, this.semaphore, this.telemetryHolder).start();
                 } else {
                     OutputStream o = s.getOutputStream();
                     BufferedWriter out = new BufferedWriter(new OutputStreamWriter(o));

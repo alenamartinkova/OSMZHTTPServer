@@ -7,7 +7,6 @@ import android.webkit.MimeTypeMap;
 import androidx.annotation.RequiresApi;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -20,20 +19,21 @@ import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.TimeZone;
 import java.util.concurrent.Semaphore;
+
 @RequiresApi(api = Build.VERSION_CODES.O)
 public class ClientThread extends Thread {
     private Socket socket;
     private Semaphore semaphore;
-    private Activity activity;
-    private LocationHolder locationHolder;
-    ClientThread(Socket s, Semaphore semaphore, Activity activity) {
+    private TelemetryHolder telemetryHolder;
+
+    ClientThread(Socket s, Semaphore semaphore, TelemetryHolder telemetryHolder) {
         this.socket = s;
         this.semaphore = semaphore;
-        this.activity = activity;
+        this.telemetryHolder = telemetryHolder;
     }
+
     @RequiresApi(api = Build.VERSION_CODES.O)
     public void run() {
         try {
@@ -46,13 +46,9 @@ public class ClientThread extends Thread {
             String pathToSD = Environment.getExternalStorageDirectory().getAbsolutePath();
 
            if (location.equals("/streams/telemetry/data")) {
-                File file = new File(this.activity.getApplicationContext().getFilesDir(),"sensorData");
+                this.telemetryHolder.updateGPS();
 
-                if (Objects.isNull(this.locationHolder)) {
-                    this.locationHolder = new LocationHolder(this.activity);
-                }
-                this.locationHolder.updateGPS();
-                byte[] dataByte = Files.readAllBytes(Paths.get(file.getPath()));
+                byte[] dataByte = this.telemetryHolder.getData().getBytes();
                 StringBuilder header = this.getOkHeader("application/json", dataByte);
                 out.write(header + "\n");
                 out.flush();
@@ -61,8 +57,6 @@ public class ClientThread extends Thread {
            } else {
                if (location.equals("/streams/telemetry")) {
                    location = "/telemetry.html";
-                   new TelemetryHolder(this.activity);
-                   this.locationHolder = new LocationHolder(this.activity);
                }
 
                String filePath = pathToSD + location;

@@ -1,24 +1,44 @@
 package com.vsb.kru13.osmzhttpserver;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.util.Log;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import java.io.IOException;
+import androidx.core.app.ActivityCompat;
 
-public class TelemetryHolder extends LocationAndSensor implements SensorEventListener {
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
+
+public class TelemetryHolder implements SensorEventListener {
     private SensorManager sensorManager;
     private Sensor gyroscope;
     private Sensor acceleration;
     private Context context;
+    private LocationRequest locationRequest;
+    private FusedLocationProviderClient fusedLocationClient;
+    private Activity activity;
+
+    private float gyroX = 0;
+    private float gyroY = 0;
+    private float gyroZ = 0;
+
+    private float accX = 0;
+    private float accY = 0;
+    private float accZ = 0;
+
+    private double latitude = 0;
+    private double longitude = 0;
+    private double altitude = 0;
 
     TelemetryHolder(Activity activity) {
+        this.activity = activity;
         this.context = activity.getApplicationContext();
         this.sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
 
@@ -27,25 +47,22 @@ public class TelemetryHolder extends LocationAndSensor implements SensorEventLis
 
         this.acceleration = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         this.sensorManager.registerListener(this, this.acceleration, SensorManager.SENSOR_DELAY_NORMAL);
+        this.locationRequest = new LocationRequest();
+        this.locationRequest.setInterval(10000);
+        this.locationRequest.setFastestInterval(5000);
+        this.locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+
+        this.fusedLocationClient = LocationServices.getFusedLocationProviderClient(this.context);
+
+        updateGPS();
     }
 
     @Override
     public void onSensorChanged(SensorEvent sensorEvent) {
-        JSONArray data;
         if (sensorEvent.sensor == this.acceleration) {
-            try {
-                data = this.getAccelerationData(sensorEvent);
-                this.writeData(data, "acc", this.context);
-            } catch (JSONException | IOException e) {
-                e.printStackTrace();
-            }
+            this.getAccelerationData(sensorEvent);
         } else {
-            try {
-                data = this.getGyroData(sensorEvent);
-                this.writeData(data, "gyro", this.context);
-            } catch (JSONException | IOException e) {
-                e.printStackTrace();
-            }
+            this.getGyroData(sensorEvent);
         }
     }
 
@@ -58,26 +75,18 @@ public class TelemetryHolder extends LocationAndSensor implements SensorEventLis
      * Function that get acceleration data
      * @param sensorEvent
      * @return
-     * @throws JSONException
      */
-    private JSONArray getAccelerationData(SensorEvent sensorEvent) throws JSONException {
-        double alpha = 0.8;
-        double[] gravity = new double[3];
+    private void getAccelerationData(SensorEvent sensorEvent) {
+        float alpha = 0.8f;
+        float[] gravity = new float[3];
 
         gravity[0] = alpha * gravity[0] + (1 - alpha) * sensorEvent.values[0];
         gravity[1] = alpha * gravity[1] + (1 - alpha) * sensorEvent.values[1];
         gravity[2] = alpha * gravity[2] + (1 - alpha) * sensorEvent.values[2];
 
-        JSONArray array = new JSONArray();
-        array.put(sensorEvent.values[0] - gravity[0]);
-        array.put(sensorEvent.values[1] - gravity[1]);
-        array.put(sensorEvent.values[2] - gravity[2]);
-
-        //Log.d("SENSORS-ACC-0", String.valueOf(array.get(0)));
-        //Log.d("SENSORS-ACC-1", String.valueOf(array.get(1)));
-        //Log.d("SENSORS-ACC-2", String.valueOf(array.get(2)));
-
-        return array;
+        this.accX = sensorEvent.values[0] - gravity[0];
+        this.accY = sensorEvent.values[1] - gravity[1];
+        this.accZ = sensorEvent.values[2] - gravity[2];
     }
 
     /**
@@ -85,19 +94,54 @@ public class TelemetryHolder extends LocationAndSensor implements SensorEventLis
      *
      * @param sensorEvent
      * @return
-     * @throws JSONException
      */
-    private JSONArray getGyroData(SensorEvent sensorEvent) throws JSONException {
+    private void getGyroData(SensorEvent sensorEvent) {
         // Axis of the rotation sample
-        JSONArray array = new JSONArray();
-        array.put(sensorEvent.values[0]);
-        array.put(sensorEvent.values[1]);
-        array.put(sensorEvent.values[2]);
+        this.gyroX = sensorEvent.values[0];
+        this.gyroY = sensorEvent.values[1];
+        this.gyroZ = sensorEvent.values[2];
+    }
 
-        //Log.d("SENSORS-GYRO-X", String.valueOf(array.get(0)));
-        //Log.d("SENSORS-GYRO-Y", String.valueOf(array.get(1)));
-        //Log.d("SENSORS-GYRO-Z", String.valueOf(array.get(2)));
+    /**
+     * Function that updates GPS information
+     */
+    public void updateGPS() {
+        if (ActivityCompat.checkSelfPermission(this.context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
 
-        return array;
+            this.fusedLocationClient.getLastLocation().addOnSuccessListener(this.activity, location -> {
+                if (location != null) {
+                    this.latitude = location.getLatitude();
+                    this.longitude = location.getLongitude();
+                    this.altitude = location.getAltitude();
+
+                } else {
+                    Log.d("LOC-NOT", "LOC NOT");
+                }
+            });
+        } else {
+            Log.d("PERM", "not");
+        }
+    }
+
+    public String getData() {
+        return "{"
+            + "\"accelerometer\": {"
+                + "\"x\": " + this.accX + ","
+                + "\"y\": " + this.accY + ","
+                + "\"z\": " + this.accZ
+            + "},"
+
+            + "\"gyro\": {"
+                + "\"x\": " + this.gyroX + ","
+                + "\"y\": " + this.gyroY + ","
+                + "\"z\": " + this.gyroZ
+            + "},"
+
+            + "\"location\": {"
+                + "\"latitude\": " + this.latitude + ","
+                + "\"longitude\": " + this.longitude + ","
+                + "\"altitude\": " + this.altitude
+            + "}"
+        + "}";
     }
 }

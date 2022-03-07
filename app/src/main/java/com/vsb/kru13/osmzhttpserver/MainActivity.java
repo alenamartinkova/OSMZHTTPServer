@@ -72,7 +72,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         TimerTask tt = new TimerTask() {
             @Override
             public void run() {
-                mCamera.takePicture(null, null, mPicture);
+                //mCamera.takePicture(null, null, mPicture);
             }
         };
 
