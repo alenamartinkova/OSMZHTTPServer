@@ -33,8 +33,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private SocketServer s;
     private static final int READ_EXTERNAL_STORAGE = 1;
-    private Camera mCamera;
-    private CameraPreview mPreview;
 
     Handler handler = new Handler() {
         @SuppressLint("HandlerLeak")
@@ -60,46 +58,27 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         btn1.setOnClickListener(this);
         btn2.setOnClickListener(this);
 
-        // Create an instance of Camera
-        mCamera = getCameraInstance();
-        mCamera.startPreview();
+        if (CameraHolder.checkCameraHardware(this)) {
+            // Create an instance of Camera
+            Camera camera = CameraHolder.getCameraInstance();
 
-        // Create our Preview view and set it as the content of our activity.
-        mPreview = new CameraPreview(this, mCamera);
-        FrameLayout preview = (FrameLayout) findViewById(R.id.camera_preview);
-        preview.addView(mPreview);
-        Timer timer = new Timer();
-        TimerTask tt = new TimerTask() {
-            @Override
-            public void run() {
-                //mCamera.takePicture(null, null, mPicture);
-            }
-        };
+            // Create our Preview view and set it as the content of our activity.
+            CameraPreview preview = new CameraPreview(this, camera);
+            FrameLayout layout = (FrameLayout) findViewById(R.id.camera_preview);
+            layout.addView(preview);
+            camera.startPreview();
 
-        timer.schedule(tt, 5000, 2000);
-    }
-
-    /** Check if this device has a camera */
-    private boolean checkCameraHardware(Context context) {
-        if (context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA)){
-            // this device has a camera
-            return true;
+            // Add a listener to the Capture button
+            Button btn3 = (Button) findViewById(R.id.button3);
+            btn3.setOnClickListener(
+                v -> {
+                    // get an image from the camera
+                    camera.takePicture(null, null, mPicture);
+                }
+            );
         } else {
-            // no camera on this device
-            return false;
+            Log.d("SYSTEM", "Camera not available.");
         }
-    }
-
-    /** A safe way to get an instance of the Camera object. */
-    public static Camera getCameraInstance(){
-        Camera c = null;
-        try {
-            c = Camera.open(0); // attempt to get a Camera instance
-        }
-        catch (Exception e){
-            // Camera is not available (in use or does not exist)
-        }
-        return c; // returns null if camera is unavailable
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
@@ -145,26 +124,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    private Camera.PictureCallback mPicture = new Camera.PictureCallback() {
+    private Camera.PictureCallback mPicture = (data, camera) -> {
+        Log.d("TAKING PIC", "Taking picture");
+        File pictureFile = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/camera.jpg");
 
-        @Override
-        public void onPictureTaken(byte[] data, Camera camera) {
-            Log.d("TAKING PIC", "Taking picture");
-            File pictureFile = new File(Environment.getExternalStorageDirectory().getAbsolutePath().toString() + "/camera.jpg");
-            if (pictureFile == null){
-                Log.d("CREATE ERR", "Error creating media file, check storage permissions");
-                return;
-            }
-
-            try {
-                FileOutputStream fos = new FileOutputStream(pictureFile);
-                fos.write(data);
-                fos.close();
-            } catch (FileNotFoundException e) {
-                Log.d("FNF", "File not found: " + e.getMessage());
-            } catch (IOException e) {
-                Log.d("EAF", "Error accessing file: " + e.getMessage());
-            }
+        try {
+            FileOutputStream fos = new FileOutputStream(pictureFile);
+            fos.write(data);
+            fos.close();
+        } catch (FileNotFoundException e) {
+            Log.d("FNF", "File not found: " + e.getMessage());
+        } catch (IOException e) {
+            Log.d("EAF", "Error accessing file: " + e.getMessage());
         }
     };
 }
