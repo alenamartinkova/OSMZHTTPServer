@@ -73,11 +73,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             btn3.setOnClickListener(
                 v -> {
                     // get an image from the camera
+                    //camera.startPreview();
                     camera.takePicture(null, null, mPicture);
                 }
             );
         } else {
-            Log.d("SYSTEM", "Camera not available.");
+            Log.d("CAM", "Camera perms missing.");
         }
     }
 
@@ -137,5 +138,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         } catch (IOException e) {
             Log.d("EAF", "Error accessing file: " + e.getMessage());
         }
+
+        camera.startPreview();
     };
 }
