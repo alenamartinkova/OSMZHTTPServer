@@ -70,7 +70,6 @@ public class ClientThread extends Thread {
                 TimerTask tt = new TimerTask() {
                     @Override
                     public void run() {
-                    camera.takePicture(null, null, CameraHolder.getInstance().mPicture);
                     byte[] picture = cameraHolder.getPicData();
                     Log.d("MJPEG-WRITING", "Writing picture");
 
