@@ -1,5 +1,6 @@
 package com.vsb.kru13.osmzhttpserver;
-import android.app.Activity;
+
+import android.hardware.Camera;
 import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
@@ -20,6 +21,8 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Locale;
 import java.util.TimeZone;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.Semaphore;
 
 @RequiresApi(api = Build.VERSION_CODES.O)
@@ -27,11 +30,13 @@ public class ClientThread extends Thread {
     private Socket socket;
     private Semaphore semaphore;
     private TelemetryHolder telemetryHolder;
+    private Camera camera;
 
-    ClientThread(Socket s, Semaphore semaphore, TelemetryHolder telemetryHolder) {
+    ClientThread(Socket s, Semaphore semaphore, TelemetryHolder telemetryHolder, Camera camera) {
         this.socket = s;
         this.semaphore = semaphore;
         this.telemetryHolder = telemetryHolder;
+        this.camera = camera;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
@@ -39,13 +44,13 @@ public class ClientThread extends Thread {
         try {
             Log.d("SERVER", "Socket Accepted");
             Log.d("CLIENT", "Starting thread");
-            OutputStream o = this.socket.getOutputStream();
+            final OutputStream o = this.socket.getOutputStream();
             BufferedWriter out = new BufferedWriter(new OutputStreamWriter(o));
             BufferedReader in = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
             String location = this.getLocation(in);
             String pathToSD = Environment.getExternalStorageDirectory().getAbsolutePath();
 
-           if (location.equals("/streams/telemetry/data")) {
+            if (location.equals("/streams/telemetry/data")) {
                 this.telemetryHolder.updateGPS();
 
                 byte[] dataByte = this.telemetryHolder.getData().getBytes();
@@ -54,12 +59,40 @@ public class ClientThread extends Thread {
                 out.flush();
                 o.write(dataByte);
                 o.flush();
-           } else {
-               if (location.equals("/streams/telemetry")) {
-                   location = "/telemetry.html";
-               }
+                this.socket.close();
+            } else if (location.equals("/streams/camera")) {
+                StringBuilder header = this.getOkHeaderCamera();
+                out.write(header + "\n");
+                out.flush();
 
-               String filePath = pathToSD + location;
+                final CameraHolder cameraHolder = CameraHolder.getInstance();
+                Timer timer = new Timer();
+                TimerTask tt = new TimerTask() {
+                    @Override
+                    public void run() {
+                    camera.takePicture(null, null, CameraHolder.getInstance().mPicture);
+                    byte[] picture = cameraHolder.getPicData();
+                    Log.d("MJPEG-WRITING", "Writing picture");
+
+                    try {
+                        o.write("--OSMZ_boundary\n".getBytes());
+                        o.write("Content-Type: image/jpeg\n\n".getBytes());
+                        o.write(picture);
+                        o.write("\n".getBytes());
+                        o.flush();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    }
+                };
+                timer.schedule(tt, 5000, 2000);
+
+            } else {
+                if (location.equals("/streams/telemetry")) {
+                    location = "/telemetry.html";
+                }
+
+                String filePath = pathToSD + location;
 
                 try {
                     String type = MimeTypeMap.getFileExtensionFromUrl(location);
@@ -70,23 +103,25 @@ public class ClientThread extends Thread {
                     out.flush();
                     o.write(dataByte);
                     o.flush();
-                } catch (NoSuchFileException|FileNotFoundException e) {
+                    this.socket.close();
+                } catch (NoSuchFileException | FileNotFoundException e) {
                     this.generateNoSuchFile(e, out);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
             out.flush();
-            this.socket.close();
             Log.d("SERVER", "Socket Closed");
-        } catch(IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         } finally {
             this.semaphore.release();
         }
     }
+
     /**
      * Returns header when file is found
+     *
      * @param type
      * @param data
      * @return
@@ -94,26 +129,39 @@ public class ClientThread extends Thread {
     StringBuilder getOkHeader(String type, byte[] data) {
         StringBuilder sb = new StringBuilder();
         sb.append("HTTP/1.0 200 OK\n");
-        sb.append("Date:" + this.getServerTime()+"\n");
-        sb.append("Content-Type: "+type+"\n"); // MIME typ souboru
-        sb.append("Content-Length: "+data.length+"\n"); // delka souboru
+        sb.append("Date:" + this.getServerTime() + "\n");
+        sb.append("Content-Type: " + type + "\n"); // MIME typ souboru
+        sb.append("Content-Length: " + data.length + "\n"); // delka souboru
         return sb;
     }
+
+    /**
+     * Returns ok header for camera stream
+     * @return
+     */
+    StringBuilder getOkHeaderCamera() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("HTTP/1.0 200 OK\n");
+        sb.append("Date:" + this.getServerTime() + "\n");
+        sb.append("Content-Type: multipart/x-mixed-replace; boundary=\'OSMZ_boundary\'\n");
+        return sb;
+    }
+
     /**
      * Returns error header
      *
      * @param content
-     *
      * @return
      */
     StringBuilder getErrorHeader(String content) {
         StringBuilder sb = new StringBuilder();
         sb.append("HTTP/1.0 404 NOT FOUND\n");
-        sb.append("Date: " + this.getServerTime() +"\n");
+        sb.append("Date: " + this.getServerTime() + "\n");
         sb.append("Content-Type: text/html\n");
-        sb.append("Content-Length: " + content.length() +"\n");
+        sb.append("Content-Length: " + content.length() + "\n");
         return sb;
     }
+
     /**
      * Function that returns location of file
      *
@@ -132,6 +180,7 @@ public class ClientThread extends Thread {
         }
         return location.equals("/") ? "/index.html" : location;
     }
+
     /**
      * Function that returns server time
      *
@@ -144,8 +193,8 @@ public class ClientThread extends Thread {
         dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
         return dateFormat.format(calendar.getTime());
     }
+
     /**
-     *
      * @param e
      * @param out
      * @throws IOException

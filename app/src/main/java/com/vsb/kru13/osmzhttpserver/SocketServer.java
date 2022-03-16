@@ -1,6 +1,7 @@
 package com.vsb.kru13.osmzhttpserver;
 
 import android.app.Activity;
+import android.hardware.Camera;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -31,11 +32,13 @@ public class SocketServer extends Thread {
     private Handler handler;
     private Activity activity;
     private TelemetryHolder telemetryHolder;
+    private Camera camera;
 
-    public SocketServer(Handler handler, Activity activity) {
+    public SocketServer(Handler handler, Activity activity, Camera camera) {
         this.handler = handler;
         this.activity = activity;
         this.telemetryHolder = new TelemetryHolder(this.activity);
+        this.camera = camera;
     }
 
     public void close() {
@@ -69,7 +72,7 @@ public class SocketServer extends Thread {
                     message.setData(bundle);
                     message.sendToTarget();
 
-                    new ClientThread(s, this.semaphore, this.telemetryHolder).start();
+                    new ClientThread(s, this.semaphore, this.telemetryHolder, this.camera).start();
                 } else {
                     OutputStream o = s.getOutputStream();
                     BufferedWriter out = new BufferedWriter(new OutputStreamWriter(o));

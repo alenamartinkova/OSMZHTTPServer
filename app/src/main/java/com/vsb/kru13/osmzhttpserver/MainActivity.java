@@ -8,12 +8,10 @@ import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
-import android.content.Context;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
@@ -22,17 +20,11 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.Timer;
-import java.util.TimerTask;
-
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private SocketServer s;
     private static final int READ_EXTERNAL_STORAGE = 1;
+    private Camera camera;
 
     Handler handler = new Handler() {
         @SuppressLint("HandlerLeak")
@@ -42,7 +34,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             textView.setText(
                     "Users count is " + message.getData().getInt("usersCount")
-                    + ", available connections: " + message.getData().getInt("availablePermits")
+                            + ", available connections: " + message.getData().getInt("availablePermits")
             );
         }
     };
@@ -60,23 +52,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         if (CameraHolder.checkCameraHardware(this)) {
             // Create an instance of Camera
-            Camera camera = CameraHolder.getCameraInstance();
+            this.camera = CameraHolder.getCameraInstance();
 
             // Create our Preview view and set it as the content of our activity.
             CameraPreview preview = new CameraPreview(this, camera);
             FrameLayout layout = (FrameLayout) findViewById(R.id.camera_preview);
             layout.addView(preview);
-            camera.startPreview();
-
-            // Add a listener to the Capture button
-            Button btn3 = (Button) findViewById(R.id.button3);
-            btn3.setOnClickListener(
-                v -> {
-                    // get an image from the camera
-                    //camera.startPreview();
-                    camera.takePicture(null, null, mPicture);
-                }
-            );
+            this.camera.startPreview();
         } else {
             Log.d("CAM", "Camera perms missing.");
         }
@@ -94,7 +76,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 ActivityCompat.requestPermissions(
                         this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, READ_EXTERNAL_STORAGE);
             } else {
-                s = new SocketServer(this.handler, this);
+                s = new SocketServer(this.handler, this, this.camera);
                 s.start();
             }
         }
@@ -115,7 +97,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             case READ_EXTERNAL_STORAGE:
                 if ((grantResults.length > 0) && (grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
-                    s = new SocketServer(this.handler, this);
+                    s = new SocketServer(this.handler, this, this.camera);
                     s.start();
                 }
                 break;
@@ -124,21 +106,4 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
         }
     }
-
-    private Camera.PictureCallback mPicture = (data, camera) -> {
-        Log.d("TAKING PIC", "Taking picture");
-        File pictureFile = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/camera.jpg");
-
-        try {
-            FileOutputStream fos = new FileOutputStream(pictureFile);
-            fos.write(data);
-            fos.close();
-        } catch (FileNotFoundException e) {
-            Log.d("FNF", "File not found: " + e.getMessage());
-        } catch (IOException e) {
-            Log.d("EAF", "Error accessing file: " + e.getMessage());
-        }
-
-        camera.startPreview();
-    };
 }
