@@ -45,7 +45,7 @@ public class ClientThread extends Thread {
             Log.d("SERVER", "Socket Accepted");
             Log.d("CLIENT", "Starting thread");
             final OutputStream o = this.socket.getOutputStream();
-            BufferedWriter out = new BufferedWriter(new OutputStreamWriter(o));
+            final BufferedWriter out = new BufferedWriter(new OutputStreamWriter(o));
             BufferedReader in = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
             String location = this.getLocation(in);
             String pathToSD = Environment.getExternalStorageDirectory().getAbsolutePath();
@@ -70,21 +70,22 @@ public class ClientThread extends Thread {
                 TimerTask tt = new TimerTask() {
                     @Override
                     public void run() {
-                    byte[] picture = cameraHolder.getPicData();
-                    Log.d("MJPEG-WRITING", "Writing picture");
+                        byte[] picture = cameraHolder.getPicData();
+                        Log.d("MJPEG-WRITING", "Writing picture");
 
-                    try {
-                        o.write("--OSMZ_boundary\n".getBytes());
-                        o.write("Content-Type: image/jpeg\n\n".getBytes());
-                        o.write(picture);
-                        o.write("\n".getBytes());
-                        o.flush();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+                        try {
+                            o.write("--OSMZ_boundary\n".getBytes());
+                            o.write("Content-Type: image/jpeg\n\n".getBytes());
+                            o.write(picture);
+                            o.write("\n".getBytes());
+                            o.flush();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                            Log.d("Knock", "knock");
+                        }
                     }
                 };
-                timer.schedule(tt, 5000, 2000);
+                timer.schedule(tt, 1000, 1000);
 
             } else {
                 if (location.equals("/streams/telemetry")) {

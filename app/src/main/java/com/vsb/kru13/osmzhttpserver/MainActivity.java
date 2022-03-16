@@ -20,7 +20,6 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
-import java.io.IOException;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -38,7 +37,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             textView.setText(
                     "Users count is " + message.getData().getInt("usersCount")
-                            + ", available connections: " + message.getData().getInt("availablePermits")
+                    + ", available connections: " + message.getData().getInt("availablePermits")
             );
         }
     };
@@ -68,10 +67,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             TimerTask tt = new TimerTask() {
                 @Override
                 public void run() {
-                camera.takePicture(null, null, CameraHolder.getInstance().mPicture);
+                    camera.takePicture(null, null, CameraHolder.getInstance().mPicture);
                 }
             };
-            timer.schedule(tt, 5000, 2000);
+            timer.schedule(tt, 1000, 1000);
         } else {
             Log.d("CAM", "Camera perms missing.");
         }
