@@ -20,6 +20,10 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
+import java.io.IOException;
+import java.util.Timer;
+import java.util.TimerTask;
+
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private SocketServer s;
@@ -59,6 +63,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             FrameLayout layout = (FrameLayout) findViewById(R.id.camera_preview);
             layout.addView(preview);
             this.camera.startPreview();
+
+            Timer timer = new Timer();
+            TimerTask tt = new TimerTask() {
+                @Override
+                public void run() {
+                camera.takePicture(null, null, CameraHolder.getInstance().mPicture);
+                }
+            };
+            timer.schedule(tt, 5000, 2000);
         } else {
             Log.d("CAM", "Camera perms missing.");
         }
